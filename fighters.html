@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kämpfer Eintragen</title>
+    <style>
+        /* Allgemeines Styling */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: auto;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        input[type="date"] {
+            cursor: pointer;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        /* Fehlerhinweise */
+        .error {
+            color: red;
+            font-size: 14px;
+            margin-top: -10px;
+            margin-bottom: 10px;
+        }
+
+        /* Medienabfragen für responsive Design */
+        @media (max-width: 600px) {
+            form {
+                padding: 15px;
+                width: 90%;
+            }
+        }
+    </style>
+    <script>
+        // JavaScript Validierung
+        function validateForm() {
+            let vorname = document.getElementById('vorname').value;
+            let nachname = document.getElementById('nachname').value;
+            let geburtsdatum = document.getElementById('geburtsdatum').value;
+            let nationalitaet = document.getElementById('nationalitaet').value;
+            let gewichtsklasse = document.getElementById('gewichtsklasse').value;
+            let disziplin = document.getElementById('disziplin').value;
+            let organisation = document.getElementById('organisation').value;
+
+            if (!vorname || !nachname || !geburtsdatum || !nationalitaet || !gewichtsklasse || !disziplin || !organisation) {
+                alert("Bitte alle Felder ausfüllen.");
+                return false;
+            }
+            return true;
+        }
+
+        // Kämpfer hinzufügen und Liste aktualisieren
+function submitForm(event) {
+    event.preventDefault(); // Verhindert das normale Absenden des Formulars
+
+    // Formulardaten sammeln
+    const formData = new FormData(document.getElementById('fighterForm'));
+
+    // Kämpfer hinzufügen (AJAX)
+    fetch('add_fighters.php?action=add', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json()) // Antwort als JSON parsen
+    .then(data => {
+        if (data.success) {
+            alert("Kämpfer erfolgreich hinzugefügt!");
+            document.getElementById('fighterForm').reset(); // Formular zurücksetzen
+            loadFighters(); // Liste der Kämpfer aktualisieren
+        } else {
+            alert("Fehler beim Hinzufügen des Kämpfers: " + data.message);
+        }
+    })
+    .catch(error => {
+        alert("Fehler bei der Anfrage: " + error.message);
+    });
+}
+
+// Kämpfer-Liste laden
+function loadFighters() {
+    fetch('add_fighters.php?action=list')
+    .then(response => response.json()) // Antwort als JSON parsen
+    .then(data => {
+        if (data.success) {
+            const tableBody = document.getElementById('fightersTableBody');
+            tableBody.innerHTML = ""; // Alte Inhalte entfernen
+
+            // Kämpfer-Daten hinzufügen
+            data.data.forEach(fighter => {
+                const row = `
+                    <tr>
+                        <td>${fighter.vorname}</td>
+                        <td>${fighter.nachname}</td>
+                        <td>${fighter.geburtsdatum}</td>
+                        <td>${fighter.nationalitaet}</td>
+                        <td>${fighter.gewichtsklasse}</td>
+                        <td>${fighter.disziplin_id}</td>
+                        <td>${fighter.organisation}</td>
+                        <td>${fighter.rekord}</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        } else {
+            alert("Fehler beim Abrufen der Kämpferliste: " + data.message);
+        }
+    })
+    .catch(error => {
+        alert("Fehler bei der Anfrage: " + error.message);
+    });
+}
+
+// Seite laden und Kämpfer-Liste anzeigen
+document.addEventListener('DOMContentLoaded', () => {
+    loadFighters(); // Kämpfer-Liste direkt laden
+});
+
+
+    </script>
+</head>
+<body>
+    <div>
+        <h2>Kämpfer Hinzufügen</h2>
+        <form id="fighterForm" onsubmit="submitForm(event)">
+            <label for="vorname">Vorname:</label>
+            <input type="text" id="vorname" name="vorname" required><br>
+
+            <label for="nachname">Nachname:</label>
+            <input type="text" id="nachname" name="nachname" required><br>
+
+            <label for="geburtsdatum">Geburtsdatum:</label>
+            <input type="date" id="geburtsdatum" name="geburtsdatum"><br>
+
+            <label for="nationalitaet">Nationalität:</label>
+            <input type="text" id="nationalitaet" name="nationalitaet" required><br>
+
+            <label for="gewichtsklasse">Gewichtsklasse:</label>
+            <input type="text" id="gewichtsklasse" name="gewichtsklasse" required><br>
+
+            <label for="disziplin">Disziplin:</label>
+            <select id="disziplin" name="disziplin" required>
+                <option value="1">MMA</option>
+                <option value="2">Boxen</option>
+                <option value="3">Kickboxen/K1</option>
+                <option value="4">Muay Thai</option>
+            </select><br>
+
+            <label for="organisation">Organisation:</label>
+            <select id="organisation" name="organisation" required>
+                <!-- Organisationen für MMA -->
+                <optgroup label="MMA" class="organisation-mma">
+                    <option value="UFC">UFC</option>
+                    <option value="PFL">PFL</option>
+                    <option value="Bellator">Bellator</option>
+                    <option value="ONE">ONE</option>
+                    <option value="KSW">KSW</option>
+                    <option value="OKTAGON">OKTAGON</option>
+                </optgroup>
+            
+                <!-- Organisationen für Boxen -->
+                <optgroup label="Boxen" class="organisation-boxen">
+                    <!-- Einzeln -->
+                    <option value="WBC">WBC</option>
+                    <option value="WBO">WBO</option>
+                    <option value="IBF">IBF</option>
+                    <option value="WBA">WBA</option>
+                
+                    <!-- 2er-Kombinationen -->
+                    <option value="WBC/WBO">WBC/WBO</option>
+                    <option value="WBC/IBF">WBC/IBF</option>
+                    <option value="WBC/WBA">WBC/WBA</option>
+                    <option value="WBO/IBF">WBO/IBF</option>
+                    <option value="WBO/WBA">WBO/WBA</option>
+                    <option value="IBF/WBA">IBF/WBA</option>
+                
+                    <!-- 3er-Kombinationen -->
+                    <option value="WBC/WBO/IBF">WBC/WBO/IBF</option>
+                    <option value="WBC/WBO/WBA">WBC/WBO/WBA</option>
+                    <option value="WBC/IBF/WBA">WBC/IBF/WBA</option>
+                    <option value="WBO/IBF/WBA">WBO/IBF/WBA</option>
+                
+                    <!-- 4er-Kombinationen -->
+                    <option value="WBC/WBO/IBF/WBA">WBC/WBO/IBF/WBA</option>
+                </optgroup>
+                
+                <!-- Organisationen für Kickboxen/K1 -->
+                <optgroup label="Kickboxen/K1" class="organisation-kickboxen">
+                    <option value="GLORY">GLORY</option>
+                </optgroup>
+            </select><br>
+
+            <label for="rekord">Rekord:</label>
+            <input type="text" id="rekord" name="rekord"><br>
+
+            <button type="submit">Kämpfer hinzufügen</button>
+        </form>
+    </div>
+
+    <div>
+        <h2>Kämpferliste</h2>
+        <table border="1" style="width: 100%; text-align: left; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th>Vorname</th>
+                    <th>Nachname</th>
+                    <th>Geburtsdatum</th>
+                    <th>Nationalität</th>
+                    <th>Gewichtsklasse</th>
+                    <th>Disziplin</th>
+                    <th>Organisation</th>
+                    <th>Rekord</th>
+                </tr>
+            </thead>
+            <tbody id="fightersTableBody">
+                <!-- Dynamisch eingefügte Zeilen -->
+            </tbody>
+        </table>
+    </div>
+    
+</body>
+</html>

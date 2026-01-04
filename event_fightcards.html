@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event & Fightcard Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+        h2 {
+            color: #333;
+        }
+        form, table {
+            margin-bottom: 20px;
+        }
+        label, select, input, button {
+            display: block;
+            margin-bottom: 10px;
+            width: 100%;
+            max-width: 400px;
+            padding: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        table th, table td {
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+        table th {
+            background-color: #f4f4f4;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Load Fighters on Page Load
+            loadFighters();
+
+            // Load Events on Page Load
+            loadEvents();
+
+            // Add Event Form Submission
+            document.getElementById("addEventForm").addEventListener("submit", function (event) {
+                event.preventDefault();
+                const formData = new FormData(this);
+
+                fetch("manage_events.php?action=add", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Event erfolgreich hinzugefügt!");
+                        loadEvents();
+                        this.reset();
+                    } else {
+                        alert("Fehler: " + data.message);
+                    }
+                });
+            });
+
+            // Add Fightcard Form Submission
+            document.getElementById("addFightForm").addEventListener("submit", function (event) {
+                event.preventDefault();
+                const formData = new FormData(this);
+                formData.set("event_id", document.getElementById("eventSelect").value);
+
+                fetch("manage_fightcards.php?action=add", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert("Kampf erfolgreich hinzugefügt!");
+                        loadFightcard(formData.get("event_id"));
+                        this.reset();
+                    } else {
+                        alert("Fehler: " + data.message);
+                    }
+                });
+            });
+
+            // Event Selection Change
+            document.getElementById("eventSelect").addEventListener("change", function () {
+                const eventId = this.value;
+                if (eventId) {
+                    loadFightcard(eventId);
+                }
+            });
+        });
+
+        // Load Fighters
+        function loadFighters() {
+            fetch("get_fighters.php")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const fighter1Select = document.getElementById("fighter1_id");
+                        const fighter2Select = document.getElementById("fighter2_id");
+
+                        // Clear existing options
+                        fighter1Select.innerHTML = "<option value=''>Kämpfer auswählen</option>";
+                        fighter2Select.innerHTML = "<option value=''>Kämpfer auswählen</option>";
+
+                        // Populate dropdowns with fighter data
+                        data.data.forEach(fighter => {
+                            const option1 = document.createElement("option");
+                            option1.value = fighter.id;
+                            option1.textContent = fighter.name;
+
+                            const option2 = document.createElement("option");
+                            option2.value = fighter.id;
+                            option2.textContent = fighter.name;
+
+                            fighter1Select.appendChild(option1);
+                            fighter2Select.appendChild(option2);
+                        });
+                    }
+                });
+        }
+
+        // Load Events
+        function loadEvents() {
+            fetch("manage_events.php?action=list")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const eventSelect = document.getElementById("eventSelect");
+                        eventSelect.innerHTML = "<option value=''>Event auswählen</option>";
+
+                        data.data.forEach(event => {
+                            const option = document.createElement("option");
+                            option.value = event.id;
+                            option.textContent = `${event.name} - ${event.datum}`;
+                            eventSelect.appendChild(option);
+                        });
+                    }
+                });
+        }
+
+        // Load Fightcard for an Event
+        function loadFightcard() {
+            fetch(`manage_fightcards.php?action=list`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const fightcardTable = document.getElementById("fightcardTableBody");
+                        fightcardTable.innerHTML = "";
+
+                        data.data.forEach(fight => {
+                            const row = document.createElement("tr");
+                            row.innerHTML = `
+                                <td>${fight.event_name}</td>
+                                <td>${fight.fighter1_name}</td>
+                                <td>${fight.fighter2_name}</td>
+                                <td>${fight.fight_order}</td>
+                            `;
+                            fightcardTable.appendChild(row);
+                        });
+                    }
+                });
+        }
+
+        // Beim Laden der Seite die Fightcards automatisch laden
+document.addEventListener("DOMContentLoaded", function () {
+    loadFightcard();
+});
+
+// Load Organisations
+function loadOrganisations() {
+    fetch("get_organisations.php")
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const organisationSelect = document.getElementById("organisation_id");
+                organisationSelect.innerHTML = "<option value=''>Organisation auswählen</option>";
+
+                data.data.forEach(org => {
+                    const option = document.createElement("option");
+                    option.value = org.id;
+                    option.textContent = org.name;
+                    organisationSelect.appendChild(option);
+                });
+            }
+        });
+}
+
+// Beim Laden der Seite Organisationen laden
+document.addEventListener("DOMContentLoaded", function () {
+    loadOrganisations();
+});
+    </script>
+</head>
+<body>
+    <h2>Event Management</h2>
+    <form id="addEventForm">
+        <label for="name">Event Name:</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="organisation_id">Organisation:</label>
+        <select id="organisation_id" name="organisation_id" required>
+            <option value="">Organisation auswählen</option>
+        </select>
+
+        <label for="datum">Datum:</label>
+        <input type="date" id="datum" name="datum" >
+
+        <label for="austragungsort">Austragungsort:</label>
+        <input type="text" id="austragungsort" name="austragungsort" required>
+
+        <label for="uhrzeit">Uhrzeit:</label>
+        <input type="time" id="uhrzeit" name="uhrzeit">
+
+        <label for="streaming_service">Streaming-Service:</label>
+        <input type="text" id="streaming_service" name="streaming_service">
+
+        <label for="ticket_link">Ticket-Link:</label>
+        <input type="url" id="ticket_link" name="ticket_link">
+
+        <button type="submit">Event hinzufügen</button>
+    </form>
+
+    <h2>Fightcard Management</h2>
+    <label for="eventSelect">Event auswählen:</label>
+    <select id="eventSelect" required>
+        <option value="">Event auswählen</option>
+    </select>
+
+    <form id="addFightForm">
+        <label for="fighter1_id">Kämpfer 1:</label>
+        <select id="fighter1_id" name="fighter1_id" required>
+            <option value="">Kämpfer auswählen</option>
+        </select>
+
+        <label for="fighter2_id">Kämpfer 2:</label>
+        <select id="fighter2_id" name="fighter2_id" required>
+            <option value="">Kämpfer auswählen</option>
+        </select>
+
+        <label for="fight_order">Kampf Reihenfolge:</label>
+        <input type="number" id="fight_order" name="fight_order" required>
+
+        <button type="submit">Kampf hinzufügen</button>
+    </form>
+
+    <h2>Fightcard</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Event</th>
+                <th>Kämpfer 1</th>
+                <th>Kämpfer 2</th>
+                <th>Reihenfolge</th>
+            </tr>
+        </thead>
+        <tbody id="fightcardTableBody">
+        </tbody>
+    </table>
+</body>
+</html>
