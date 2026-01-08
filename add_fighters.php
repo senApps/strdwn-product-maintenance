@@ -25,14 +25,28 @@ try {
             $disziplin_id = $_POST['disziplin'];
             $organisation = $_POST['organisation'];
             $rekord = $_POST['rekord'] ?? null;  // Optional
+            $image_path = null;
 
             if($geburtsdatum == ""){
                 $geburtsdatum = NULL;
             }
 
+            // Handle image upload
+            if (isset($_FILES['fighterImage']) && $_FILES['fighterImage']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = 'server/dist/backend/uploads/fighters/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $filename = basename($_FILES['fighterImage']['name']);
+                $targetPath = $uploadDir . $filename;
+                if (move_uploaded_file($_FILES['fighterImage']['tmp_name'], $targetPath)) {
+                    $image_path = $targetPath;
+                }
+            }
+
             // SQL-Query zum Hinzufügen eines Kämpfers
-            $sql = "INSERT INTO Fighters (vorname, nachname, geburtsdatum, nationalitaet, gewichtsklasse, disziplin_id, organisation, rekord)
-                    VALUES (:vorname, :nachname, :geburtsdatum, :nationalitaet, :gewichtsklasse, :disziplin_id, :organisation, :rekord)";
+            $sql = "INSERT INTO Fighters (vorname, nachname, geburtsdatum, nationalitaet, gewichtsklasse, disziplin_id, organisation, rekord, image_path)
+                    VALUES (:vorname, :nachname, :geburtsdatum, :nationalitaet, :gewichtsklasse, :disziplin_id, :organisation, :rekord, :image_path)";
             $stmt = $pdo->prepare($sql);
             $stmt->bindParam(':vorname', $vorname);
             $stmt->bindParam(':nachname', $nachname);
@@ -42,6 +56,7 @@ try {
             $stmt->bindParam(':disziplin_id', $disziplin_id);
             $stmt->bindParam(':organisation', $organisation);
             $stmt->bindParam(':rekord', $rekord);
+            $stmt->bindParam(':image_path', $image_path);
 
             $stmt->execute();
 

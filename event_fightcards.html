@@ -5,23 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Event & Fightcard Management</title>
     <style>
+                .event-select-compact {
+                    width: 300px;
+                    max-width: 90vw;
+                    display: block;
+                    margin-bottom: 15px;
+                    padding: 10px;
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                    font-size: 16px;
+                    box-sizing: border-box;
+                }
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 0;
+            padding: 0;
             background-color: #f9f9f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
         }
         h2 {
             color: #333;
         }
-        form, table {
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
             margin-bottom: 20px;
         }
-        label, select, input, button {
+        label {
             display: block;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        input, select, button {
             width: 100%;
-            max-width: 400px;
-            padding: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
         }
         table {
             width: 100%;
@@ -40,9 +70,17 @@
             color: white;
             border: none;
             cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
         }
         button:hover {
             background-color: #45a049;
+        }
+        @media (max-width: 600px) {
+            form {
+                padding: 15px;
+                width: 90%;
+            }
         }
     </style>
     <script>
@@ -213,6 +251,17 @@ document.addEventListener("DOMContentLoaded", function () {
         <label for="name">Event Name:</label>
         <input type="text" id="name" name="name" required>
 
+        <!-- Image Upload Field -->
+        <label for="eventImage">Event-Bild hochladen:</label>
+        <div id="eventImageDropArea" style="border:2px dashed #ccc; border-radius:8px; padding:16px; text-align:center; margin-bottom:15px; background:#fafafa; cursor:pointer;">
+            <span id="eventImageDropText">Bild hierher ziehen oder klicken</span>
+            <input type="file" id="eventImage" name="eventImage" accept="image/*" style="display:none;">
+            <div style="position:relative; display:inline-block; width:100%;">
+                <img id="eventImagePreview" src="" alt="Bildvorschau" style="display:none; max-width:100%; margin-top:10px; border-radius:8px;" />
+                <span id="removeEventImageIcon" title="Bild entfernen" style="display:none; position:absolute; top:18px; right:18px; background:rgba(0,0,0,0.6); color:#fff; border-radius:50%; width:28px; height:28px; line-height:28px; text-align:center; font-size:18px; font-weight:bold; cursor:pointer; z-index:2;">&#10006;</span>
+            </div>
+        </div>
+
         <label for="organisation_id">Organisation:</label>
         <select id="organisation_id" name="organisation_id" required>
             <option value="">Organisation auswählen</option>
@@ -238,7 +287,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     <h2>Fightcard Management</h2>
     <label for="eventSelect">Event auswählen:</label>
-    <select id="eventSelect" required>
+    <select id="eventSelect" class="event-select-compact" required>
         <option value="">Event auswählen</option>
     </select>
 
@@ -274,3 +323,63 @@ document.addEventListener("DOMContentLoaded", function () {
     </table>
 </body>
 </html>
+
+<script>
+// Drag & Drop Image Upload for Event
+document.addEventListener('DOMContentLoaded', function() {
+    const imageDropArea = document.getElementById('eventImageDropArea');
+    const eventImageInput = document.getElementById('eventImage');
+    const imagePreview = document.getElementById('eventImagePreview');
+    const imageDropText = document.getElementById('eventImageDropText');
+    const removeEventImageIcon = document.getElementById('removeEventImageIcon');
+
+    imageDropArea.addEventListener('click', () => {
+        eventImageInput.click();
+    });
+
+    imageDropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        imageDropArea.style.background = '#e0ffe0';
+    });
+
+    imageDropArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        imageDropArea.style.background = '#fafafa';
+    });
+
+    imageDropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        imageDropArea.style.background = '#fafafa';
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            eventImageInput.files = e.dataTransfer.files;
+            showImagePreview(e.dataTransfer.files[0]);
+        }
+    });
+
+    eventImageInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            showImagePreview(e.target.files[0]);
+        }
+    });
+
+    function showImagePreview(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            imagePreview.src = e.target.result;
+            imagePreview.style.display = 'block';
+            imageDropText.style.display = 'none';
+            removeEventImageIcon.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    removeEventImageIcon.addEventListener('click', function(e) {
+        e.stopPropagation();
+        eventImageInput.value = '';
+        imagePreview.src = '';
+        imagePreview.style.display = 'none';
+        imageDropText.style.display = 'inline';
+        removeEventImageIcon.style.display = 'none';
+    });
+});
+</script>

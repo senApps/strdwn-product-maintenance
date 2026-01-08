@@ -27,10 +27,24 @@ try {
             $organisation_id = $_POST['organisation_id']; // Neu hinzugefügt
             $streaming_service = $_POST['streaming_service'] ?? null;
             $ticket_link = $_POST['ticket_link'] ?? null;
+            $image_path = null;
+
+            // Handle image upload
+            if (isset($_FILES['eventImage']) && $_FILES['eventImage']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = 'server/dist/backend/uploads/events/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $filename = basename($_FILES['eventImage']['name']);
+                $targetPath = $uploadDir . $filename;
+                if (move_uploaded_file($_FILES['eventImage']['tmp_name'], $targetPath)) {
+                    $image_path = $targetPath;
+                }
+            }
 
             // SQL-Query zum Hinzufügen eines Events
-            $sql = "INSERT INTO Events (name, datum, uhrzeit, austragungsort, organisation_id, streaming_service, ticket_link, created_at)
-                    VALUES (:name, :datum, :uhrzeit, :austragungsort, :organisation_id, :streaming_service, :ticket_link, NOW())";
+            $sql = "INSERT INTO Events (name, datum, uhrzeit, austragungsort, organisation_id, streaming_service, ticket_link, image_path, created_at)
+                    VALUES (:name, :datum, :uhrzeit, :austragungsort, :organisation_id, :streaming_service, :ticket_link, :image_path, NOW())";
             $stmt = $pdo->prepare($sql);
             $stmt->bindParam(':name', $name);
             $stmt->bindParam(':datum', $datum);
@@ -39,6 +53,7 @@ try {
             $stmt->bindParam(':organisation_id', $organisation_id); // Neu hinzugefügt
             $stmt->bindParam(':streaming_service', $streaming_service);
             $stmt->bindParam(':ticket_link', $ticket_link);
+            $stmt->bindParam(':image_path', $image_path);
 
             $stmt->execute();
 
