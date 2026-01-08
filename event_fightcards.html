@@ -106,6 +106,11 @@
                         alert("Event erfolgreich hinzugefügt!");
                         loadEvents();
                         this.reset();
+                        // Reset image preview
+                        document.getElementById('eventImagePreview').style.display = 'none';
+                        document.getElementById('eventImagePreview').src = '';
+                        document.getElementById('eventImageDropText').style.display = 'inline';
+                        document.getElementById('removeEventImageIcon').style.display = 'none';
                     } else {
                         alert("Fehler: " + data.message);
                     }

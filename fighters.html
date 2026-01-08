@@ -82,6 +82,51 @@
                 width: 90%;
             }
         }
+
+        /* Modal for full-screen image preview */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .image-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .image-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .image-modal-close:hover {
+            color: #bbb;
+        }
+
+        .thumbnail-clickable {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .thumbnail-clickable:hover {
+            transform: scale(1.1);
+        }
     </style>
     <script>
         // JavaScript Validierung
@@ -118,6 +163,11 @@ function submitForm(event) {
         if (data.success) {
             alert("Kämpfer erfolgreich hinzugefügt!");
             document.getElementById('fighterForm').reset(); // Formular zurücksetzen
+            // Reset image preview
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('imageDropText').style.display = 'inline';
+            document.getElementById('removeImageIcon').style.display = 'none';
             loadFighters(); // Liste der Kämpfer aktualisieren
         } else {
             alert("Fehler beim Hinzufügen des Kämpfers: " + data.message);
@@ -139,8 +189,12 @@ function loadFighters() {
 
             // Kämpfer-Daten hinzufügen
             data.data.forEach(fighter => {
+                const imageThumbnail = fighter.image_path ? 
+                    `<img src="${fighter.image_path}" alt="${fighter.vorname} ${fighter.nachname}" class="thumbnail-clickable" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onclick="openImageModal('${fighter.image_path}')">` : 
+                    '<span style="color:#999;">Kein Bild</span>';
                 const row = `
                     <tr>
+                        <td>${imageThumbnail}</td>
                         <td>${fighter.vorname}</td>
                         <td>${fighter.nachname}</td>
                         <td>${fighter.geburtsdatum}</td>
@@ -264,6 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <table border="1" style="width: 100%; text-align: left; border-collapse: collapse;">
             <thead>
                 <tr>
+                    <th>Bild</th>
                     <th>Vorname</th>
                     <th>Nachname</th>
                     <th>Geburtsdatum</th>
@@ -279,11 +334,28 @@ document.addEventListener('DOMContentLoaded', () => {
             </tbody>
         </table>
     </div>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="image-modal" onclick="closeImageModal()">
+        <span class="image-modal-close" onclick="closeImageModal()">&times;</span>
+        <img id="modalImage" src="" alt="Full screen preview">
+    </div>
     
 </body>
 </html>
 
 <script>
+// Image Modal Functions
+function openImageModal(imagePath) {
+    document.getElementById('imageModal').style.display = 'flex';
+    document.getElementById('modalImage').src = imagePath;
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').style.display = 'none';
+    document.getElementById('modalImage').src = '';
+}
+
 // Drag & Drop Image Upload
 document.addEventListener('DOMContentLoaded', function() {
     const imageDropArea = document.getElementById('imageDropArea');
