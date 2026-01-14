@@ -82,6 +82,51 @@
                 width: 90%;
             }
         }
+
+        /* Modal for full-screen image preview */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .image-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .image-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .image-modal-close:hover {
+            color: #bbb;
+        }
+
+        .thumbnail-clickable {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .thumbnail-clickable:hover {
+            transform: scale(1.1);
+        }
     </style>
     <script>
         // JavaScript Validierung
@@ -118,6 +163,11 @@ function submitForm(event) {
         if (data.success) {
             alert("Kämpfer erfolgreich hinzugefügt!");
             document.getElementById('fighterForm').reset(); // Formular zurücksetzen
+            // Reset image preview
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('imageDropText').style.display = 'inline';
+            document.getElementById('removeImageIcon').style.display = 'none';
             loadFighters(); // Liste der Kämpfer aktualisieren
         } else {
             alert("Fehler beim Hinzufügen des Kämpfers: " + data.message);
@@ -139,8 +189,12 @@ function loadFighters() {
 
             // Kämpfer-Daten hinzufügen
             data.data.forEach(fighter => {
+                const imageThumbnail = fighter.image_path ? 
+                    `<img src="${fighter.image_path}" alt="${fighter.vorname} ${fighter.nachname}" class="thumbnail-clickable" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onclick="openImageModal('${fighter.image_path}')">` : 
+                    '<span style="color:#999;">Kein Bild</span>';
                 const row = `
                     <tr>
+                        <td>${imageThumbnail}</td>
                         <td>${fighter.vorname}</td>
                         <td>${fighter.nachname}</td>
                         <td>${fighter.geburtsdatum}</td>
@@ -179,6 +233,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             <label for="nachname">Nachname:</label>
             <input type="text" id="nachname" name="nachname" required><br>
+
+                <!-- Image Upload Field -->
+                <label for="fighterImage">Bild hochladen:</label>
+                <div id="imageDropArea" style="border:2px dashed #ccc; border-radius:8px; padding:16px; text-align:center; margin-bottom:15px; background:#fafafa; cursor:pointer;">
+                    <span id="imageDropText">Bild hierher ziehen oder klicken</span>
+                    <input type="file" id="fighterImage" name="fighterImage" accept="image/*" style="display:none;">
+                    <div style="position:relative; display:inline-block; width:100%;">
+                        <img id="imagePreview" src="" alt="Bildvorschau" style="display:none; max-width:100%; margin-top:10px; border-radius:8px;" />
+                        <span id="removeImageIcon" title="Bild entfernen" style="display:none; position:absolute; top:18px; right:18px; background:rgba(0,0,0,0.6); color:#fff; border-radius:50%; width:28px; height:28px; line-height:28px; text-align:center; font-size:18px; font-weight:bold; cursor:pointer; z-index:2;">&#10006;</span>
+                    </div>
+                </div>
 
             <label for="geburtsdatum">Geburtsdatum:</label>
             <input type="date" id="geburtsdatum" name="geburtsdatum"><br>
@@ -253,6 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <table border="1" style="width: 100%; text-align: left; border-collapse: collapse;">
             <thead>
                 <tr>
+                    <th>Bild</th>
                     <th>Vorname</th>
                     <th>Nachname</th>
                     <th>Geburtsdatum</th>
@@ -268,6 +334,84 @@ document.addEventListener('DOMContentLoaded', () => {
             </tbody>
         </table>
     </div>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="image-modal" onclick="closeImageModal()">
+        <span class="image-modal-close" onclick="closeImageModal()">&times;</span>
+        <img id="modalImage" src="" alt="Full screen preview">
+    </div>
     
 </body>
 </html>
+
+<script>
+// Image Modal Functions
+function openImageModal(imagePath) {
+    document.getElementById('imageModal').style.display = 'flex';
+    document.getElementById('modalImage').src = imagePath;
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').style.display = 'none';
+    document.getElementById('modalImage').src = '';
+}
+
+// Drag & Drop Image Upload
+document.addEventListener('DOMContentLoaded', function() {
+    const imageDropArea = document.getElementById('imageDropArea');
+    const fighterImageInput = document.getElementById('fighterImage');
+    const imagePreview = document.getElementById('imagePreview');
+    const imageDropText = document.getElementById('imageDropText');
+
+    imageDropArea.addEventListener('click', () => {
+        fighterImageInput.click();
+    });
+
+    imageDropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        imageDropArea.style.background = '#e0ffe0';
+    });
+
+    imageDropArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        imageDropArea.style.background = '#fafafa';
+    });
+
+    imageDropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        imageDropArea.style.background = '#fafafa';
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            fighterImageInput.files = e.dataTransfer.files;
+            showImagePreview(e.dataTransfer.files[0]);
+        }
+    });
+
+    fighterImageInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            showImagePreview(e.target.files[0]);
+        }
+    });
+
+    const removeImageIcon = document.getElementById('removeImageIcon');
+
+    function showImagePreview(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            imagePreview.src = e.target.result;
+            imagePreview.style.display = 'block';
+            imageDropText.style.display = 'none';
+            removeImageIcon.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    removeImageIcon.addEventListener('click', function(e) {
+        e.stopPropagation();
+        fighterImageInput.value = '';
+        imagePreview.src = '';
+        imagePreview.style.display = 'none';
+        imageDropText.style.display = 'inline';
+        removeImageIcon.style.display = 'none';
+    });
+});
+</script>
