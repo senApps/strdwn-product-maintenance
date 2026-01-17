@@ -203,10 +203,20 @@ function loadFighters() {
                         <td>${fighter.disziplin_id}</td>
                         <td>${fighter.organisation}</td>
                         <td>${fighter.rekord}</td>
+                        <td>
+                            <span class="edit-icon" title="Bearbeiten" data-id="${fighter.id}" style="cursor:pointer;font-size:20px;vertical-align:middle;">
+                                ✏️
+                            </span>
+                            <span class="delete-icon" title="Löschen" data-id="${fighter.id}" style="cursor:pointer;font-size:20px;vertical-align:middle;margin-left:12px;">
+                                🗑️
+                            </span>
+                        </td>
                     </tr>
                 `;
                 tableBody.innerHTML += row;
             });
+            // Re-attach event listeners for edit/delete icons
+            attachActionListeners();
         } else {
             alert("Fehler beim Abrufen der Kämpferliste: " + data.message);
         }
@@ -217,9 +227,118 @@ function loadFighters() {
 }
 
 // Seite laden und Kämpfer-Liste anzeigen
+
 document.addEventListener('DOMContentLoaded', () => {
     loadFighters(); // Kämpfer-Liste direkt laden
 });
+
+// Global helper functions for image preview
+function showImagePreview(file, isServerPath) {
+    const imagePreview = document.getElementById('imagePreview');
+    const imageDropText = document.getElementById('imageDropText');
+    const removeImageIcon = document.getElementById('removeImageIcon');
+    
+    if (isServerPath) {
+        // file is actually a server path string
+        imagePreview.src = file;
+        imagePreview.style.display = 'block';
+        imageDropText.style.display = 'none';
+        removeImageIcon.style.display = 'block';
+    } else {
+        // file is a File object
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            imagePreview.src = e.target.result;
+            imagePreview.style.display = 'block';
+            imageDropText.style.display = 'none';
+            removeImageIcon.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function clearImagePreview() {
+    const fighterImageInput = document.getElementById('fighterImage');
+    const imagePreview = document.getElementById('imagePreview');
+    const imageDropText = document.getElementById('imageDropText');
+    const removeImageIcon = document.getElementById('removeImageIcon');
+    
+    fighterImageInput.value = '';
+    imagePreview.src = '';
+    imagePreview.style.display = 'none';
+    imageDropText.style.display = 'inline';
+    removeImageIcon.style.display = 'none';
+}
+
+function attachActionListeners() {
+    document.querySelectorAll('.edit-icon').forEach(function(icon) {
+        icon.addEventListener('click', function() {
+            const fighterId = this.getAttribute('data-id');
+            // Find the fighter data from the loaded list
+            // You may need to fetch the fighter data from the table row or reload it
+            // For now, just reload the list and find the fighter
+            fetch('add_fighters.php?action=list')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const fighter = data.data.find(f => f.id == fighterId);
+                        if (!fighter) return;
+                        document.getElementById('vorname').value = fighter.vorname || '';
+                        document.getElementById('nachname').value = fighter.nachname || '';
+                        document.getElementById('geburtsdatum').value = fighter.geburtsdatum || '';
+                        document.getElementById('nationalitaet').value = fighter.nationalitaet || '';
+                        document.getElementById('gewichtsklasse').value = fighter.gewichtsklasse || '';
+                        document.getElementById('disziplin').value = fighter.disziplin_id || '';
+                        document.getElementById('organisation').value = fighter.organisation || '';
+                        document.getElementById('rekord').value = fighter.rekord || '';
+                        if (fighter.image_path) {
+                            showImagePreview(fighter.image_path, true);
+                        } else {
+                            clearImagePreview();
+                        }
+                        window.editFighterId = fighterId;
+                        document.getElementById('submitBtn').style.display = 'none';
+                        document.getElementById('updateBtn').style.display = '';
+                        document.getElementById('cancelEditBtn').style.display = '';
+                    }
+                });
+        });
+    });
+    document.querySelectorAll('.delete-icon').forEach(function(icon) {
+        icon.addEventListener('click', function() {
+            const fighterId = this.getAttribute('data-id');
+            if (confirm('Diesen Kämpfer wirklich löschen?')) {
+                const formData = new FormData();
+                formData.append('id', fighterId);
+                fetch('add_fighters.php?action=delete', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadFighters();
+                    } else {
+                        alert('Fehler beim Löschen: ' + (data.message || data.error || 'Unbekannter Fehler'));
+                    }
+                })
+                .catch(err => {
+                    alert('Fehler beim Löschen: ' + err);
+                });
+            }
+        });
+    });
+}
+
+    // Cancel edit mode
+    function cancelEdit() {
+        window.editFighterId = null;
+        document.getElementById('fighterForm').reset();
+        clearImagePreview();
+        document.getElementById('submitBtn').style.display = '';
+        document.getElementById('updateBtn').style.display = 'none';
+        document.getElementById('cancelEditBtn').style.display = 'none';
+    }
 
 
     </script>
@@ -309,7 +428,33 @@ document.addEventListener('DOMContentLoaded', () => {
             <label for="rekord">Rekord:</label>
             <input type="text" id="rekord" name="rekord"><br>
 
-            <button type="submit">Kämpfer hinzufügen</button>
+            <button type="submit" id="submitBtn">Kämpfer hinzufügen</button>
+            <button type="button" id="updateBtn" class="btn btn-success" style="display:none;">Speichern</button>
+                <script>
+                document.getElementById('updateBtn').addEventListener('click', function() {
+                    if (!window.editFighterId) return;
+                    const form = document.getElementById('fighterForm');
+                    const formData = new FormData(form);
+                    formData.append('id', window.editFighterId);
+                    fetch('add_fighters.php?action=update', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            cancelEdit();
+                            loadFighters();
+                        } else {
+                            alert('Fehler beim Aktualisieren: ' + (data.error || 'Unbekannter Fehler'));
+                        }
+                    })
+                    .catch(err => {
+                        alert('Fehler beim Aktualisieren: ' + err);
+                    });
+                });
+                </script>
+            <button type="button" id="cancelEditBtn" class="btn btn-secondary" style="display:none;" onclick="cancelEdit()">Abbrechen</button>
         </form>
     </div>
 
@@ -327,6 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <th>Disziplin</th>
                     <th>Organisation</th>
                     <th>Rekord</th>
+                                    <th></th>
                 </tr>
             </thead>
             <tbody id="fightersTableBody">
@@ -394,24 +540,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const removeImageIcon = document.getElementById('removeImageIcon');
 
-    function showImagePreview(file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            imagePreview.src = e.target.result;
-            imagePreview.style.display = 'block';
-            imageDropText.style.display = 'none';
-            removeImageIcon.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    }
-
     removeImageIcon.addEventListener('click', function(e) {
         e.stopPropagation();
-        fighterImageInput.value = '';
-        imagePreview.src = '';
-        imagePreview.style.display = 'none';
-        imageDropText.style.display = 'inline';
-        removeImageIcon.style.display = 'none';
+        clearImagePreview();
     });
 });
 </script>
