@@ -82,6 +82,51 @@
                 width: 90%;
             }
         }
+
+        /* Modal for full-screen image preview */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .image-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .image-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .image-modal-close:hover {
+            color: #bbb;
+        }
+
+        .thumbnail-clickable {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .thumbnail-clickable:hover {
+            transform: scale(1.1);
+        }
     </style>
     <script>
         // JavaScript Validierung
@@ -118,6 +163,11 @@ function submitForm(event) {
         if (data.success) {
             alert("Kämpfer erfolgreich hinzugefügt!");
             document.getElementById('fighterForm').reset(); // Formular zurücksetzen
+            // Reset image preview
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('imageDropText').style.display = 'inline';
+            document.getElementById('removeImageIcon').style.display = 'none';
             loadFighters(); // Liste der Kämpfer aktualisieren
         } else {
             alert("Fehler beim Hinzufügen des Kämpfers: " + data.message);
@@ -139,8 +189,12 @@ function loadFighters() {
 
             // Kämpfer-Daten hinzufügen
             data.data.forEach(fighter => {
+                const imageThumbnail = fighter.image_path ? 
+                    `<img src="${fighter.image_path}" alt="${fighter.vorname} ${fighter.nachname}" class="thumbnail-clickable" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onclick="openImageModal('${fighter.image_path}')">` : 
+                    '<span style="color:#999;">Kein Bild</span>';
                 const row = `
                     <tr>
+                        <td>${imageThumbnail}</td>
                         <td>${fighter.vorname}</td>
                         <td>${fighter.nachname}</td>
                         <td>${fighter.geburtsdatum}</td>
@@ -149,10 +203,20 @@ function loadFighters() {
                         <td>${fighter.disziplin_id}</td>
                         <td>${fighter.organisation}</td>
                         <td>${fighter.rekord}</td>
+                        <td>
+                            <span class="edit-icon" title="Bearbeiten" data-id="${fighter.id}" style="cursor:pointer;font-size:20px;vertical-align:middle;">
+                                ✏️
+                            </span>
+                            <span class="delete-icon" title="Löschen" data-id="${fighter.id}" style="cursor:pointer;font-size:20px;vertical-align:middle;margin-left:12px;">
+                                🗑️
+                            </span>
+                        </td>
                     </tr>
                 `;
                 tableBody.innerHTML += row;
             });
+            // Re-attach event listeners for edit/delete icons
+            attachActionListeners();
         } else {
             alert("Fehler beim Abrufen der Kämpferliste: " + data.message);
         }
@@ -163,9 +227,118 @@ function loadFighters() {
 }
 
 // Seite laden und Kämpfer-Liste anzeigen
+
 document.addEventListener('DOMContentLoaded', () => {
     loadFighters(); // Kämpfer-Liste direkt laden
 });
+
+// Global helper functions for image preview
+function showImagePreview(file, isServerPath) {
+    const imagePreview = document.getElementById('imagePreview');
+    const imageDropText = document.getElementById('imageDropText');
+    const removeImageIcon = document.getElementById('removeImageIcon');
+    
+    if (isServerPath) {
+        // file is actually a server path string
+        imagePreview.src = file;
+        imagePreview.style.display = 'block';
+        imageDropText.style.display = 'none';
+        removeImageIcon.style.display = 'block';
+    } else {
+        // file is a File object
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            imagePreview.src = e.target.result;
+            imagePreview.style.display = 'block';
+            imageDropText.style.display = 'none';
+            removeImageIcon.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function clearImagePreview() {
+    const fighterImageInput = document.getElementById('fighterImage');
+    const imagePreview = document.getElementById('imagePreview');
+    const imageDropText = document.getElementById('imageDropText');
+    const removeImageIcon = document.getElementById('removeImageIcon');
+    
+    fighterImageInput.value = '';
+    imagePreview.src = '';
+    imagePreview.style.display = 'none';
+    imageDropText.style.display = 'inline';
+    removeImageIcon.style.display = 'none';
+}
+
+function attachActionListeners() {
+    document.querySelectorAll('.edit-icon').forEach(function(icon) {
+        icon.addEventListener('click', function() {
+            const fighterId = this.getAttribute('data-id');
+            // Find the fighter data from the loaded list
+            // You may need to fetch the fighter data from the table row or reload it
+            // For now, just reload the list and find the fighter
+            fetch('add_fighters.php?action=list')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const fighter = data.data.find(f => f.id == fighterId);
+                        if (!fighter) return;
+                        document.getElementById('vorname').value = fighter.vorname || '';
+                        document.getElementById('nachname').value = fighter.nachname || '';
+                        document.getElementById('geburtsdatum').value = fighter.geburtsdatum || '';
+                        document.getElementById('nationalitaet').value = fighter.nationalitaet || '';
+                        document.getElementById('gewichtsklasse').value = fighter.gewichtsklasse || '';
+                        document.getElementById('disziplin').value = fighter.disziplin_id || '';
+                        document.getElementById('organisation').value = fighter.organisation || '';
+                        document.getElementById('rekord').value = fighter.rekord || '';
+                        if (fighter.image_path) {
+                            showImagePreview(fighter.image_path, true);
+                        } else {
+                            clearImagePreview();
+                        }
+                        window.editFighterId = fighterId;
+                        document.getElementById('submitBtn').style.display = 'none';
+                        document.getElementById('updateBtn').style.display = '';
+                        document.getElementById('cancelEditBtn').style.display = '';
+                    }
+                });
+        });
+    });
+    document.querySelectorAll('.delete-icon').forEach(function(icon) {
+        icon.addEventListener('click', function() {
+            const fighterId = this.getAttribute('data-id');
+            if (confirm('Diesen Kämpfer wirklich löschen?')) {
+                const formData = new FormData();
+                formData.append('id', fighterId);
+                fetch('add_fighters.php?action=delete', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadFighters();
+                    } else {
+                        alert('Fehler beim Löschen: ' + (data.message || data.error || 'Unbekannter Fehler'));
+                    }
+                })
+                .catch(err => {
+                    alert('Fehler beim Löschen: ' + err);
+                });
+            }
+        });
+    });
+}
+
+    // Cancel edit mode
+    function cancelEdit() {
+        window.editFighterId = null;
+        document.getElementById('fighterForm').reset();
+        clearImagePreview();
+        document.getElementById('submitBtn').style.display = '';
+        document.getElementById('updateBtn').style.display = 'none';
+        document.getElementById('cancelEditBtn').style.display = 'none';
+    }
 
 
     </script>
@@ -179,6 +352,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             <label for="nachname">Nachname:</label>
             <input type="text" id="nachname" name="nachname" required><br>
+
+                <!-- Image Upload Field -->
+                <label for="fighterImage">Bild hochladen:</label>
+                <div id="imageDropArea" style="border:2px dashed #ccc; border-radius:8px; padding:16px; text-align:center; margin-bottom:15px; background:#fafafa; cursor:pointer;">
+                    <span id="imageDropText">Bild hierher ziehen oder klicken</span>
+                    <input type="file" id="fighterImage" name="fighterImage" accept="image/*" style="display:none;">
+                    <div style="position:relative; display:inline-block; width:100%;">
+                        <img id="imagePreview" src="" alt="Bildvorschau" style="display:none; max-width:100%; margin-top:10px; border-radius:8px;" />
+                        <span id="removeImageIcon" title="Bild entfernen" style="display:none; position:absolute; top:18px; right:18px; background:rgba(0,0,0,0.6); color:#fff; border-radius:50%; width:28px; height:28px; line-height:28px; text-align:center; font-size:18px; font-weight:bold; cursor:pointer; z-index:2;">&#10006;</span>
+                    </div>
+                </div>
 
             <label for="geburtsdatum">Geburtsdatum:</label>
             <input type="date" id="geburtsdatum" name="geburtsdatum"><br>
@@ -244,7 +428,33 @@ document.addEventListener('DOMContentLoaded', () => {
             <label for="rekord">Rekord:</label>
             <input type="text" id="rekord" name="rekord"><br>
 
-            <button type="submit">Kämpfer hinzufügen</button>
+            <button type="submit" id="submitBtn">Kämpfer hinzufügen</button>
+            <button type="button" id="updateBtn" class="btn btn-success" style="display:none;">Speichern</button>
+                <script>
+                document.getElementById('updateBtn').addEventListener('click', function() {
+                    if (!window.editFighterId) return;
+                    const form = document.getElementById('fighterForm');
+                    const formData = new FormData(form);
+                    formData.append('id', window.editFighterId);
+                    fetch('add_fighters.php?action=update', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            cancelEdit();
+                            loadFighters();
+                        } else {
+                            alert('Fehler beim Aktualisieren: ' + (data.error || 'Unbekannter Fehler'));
+                        }
+                    })
+                    .catch(err => {
+                        alert('Fehler beim Aktualisieren: ' + err);
+                    });
+                });
+                </script>
+            <button type="button" id="cancelEditBtn" class="btn btn-secondary" style="display:none;" onclick="cancelEdit()">Abbrechen</button>
         </form>
     </div>
 
@@ -253,6 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <table border="1" style="width: 100%; text-align: left; border-collapse: collapse;">
             <thead>
                 <tr>
+                    <th>Bild</th>
                     <th>Vorname</th>
                     <th>Nachname</th>
                     <th>Geburtsdatum</th>
@@ -261,6 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <th>Disziplin</th>
                     <th>Organisation</th>
                     <th>Rekord</th>
+                                    <th></th>
                 </tr>
             </thead>
             <tbody id="fightersTableBody">
@@ -268,6 +480,69 @@ document.addEventListener('DOMContentLoaded', () => {
             </tbody>
         </table>
     </div>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="image-modal" onclick="closeImageModal()">
+        <span class="image-modal-close" onclick="closeImageModal()">&times;</span>
+        <img id="modalImage" src="" alt="Full screen preview">
+    </div>
     
 </body>
 </html>
+
+<script>
+// Image Modal Functions
+function openImageModal(imagePath) {
+    document.getElementById('imageModal').style.display = 'flex';
+    document.getElementById('modalImage').src = imagePath;
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').style.display = 'none';
+    document.getElementById('modalImage').src = '';
+}
+
+// Drag & Drop Image Upload
+document.addEventListener('DOMContentLoaded', function() {
+    const imageDropArea = document.getElementById('imageDropArea');
+    const fighterImageInput = document.getElementById('fighterImage');
+    const imagePreview = document.getElementById('imagePreview');
+    const imageDropText = document.getElementById('imageDropText');
+
+    imageDropArea.addEventListener('click', () => {
+        fighterImageInput.click();
+    });
+
+    imageDropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        imageDropArea.style.background = '#e0ffe0';
+    });
+
+    imageDropArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        imageDropArea.style.background = '#fafafa';
+    });
+
+    imageDropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        imageDropArea.style.background = '#fafafa';
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            fighterImageInput.files = e.dataTransfer.files;
+            showImagePreview(e.dataTransfer.files[0]);
+        }
+    });
+
+    fighterImageInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            showImagePreview(e.target.files[0]);
+        }
+    });
+
+    const removeImageIcon = document.getElementById('removeImageIcon');
+
+    removeImageIcon.addEventListener('click', function(e) {
+        e.stopPropagation();
+        clearImagePreview();
+    });
+});
+</script>

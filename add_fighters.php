@@ -15,6 +15,11 @@ try {
     if (isset($_GET['action'])) {
         $action = $_GET['action'];
 
+        // Use POST 'action' if present (for AJAX update/delete)
+        if (isset($_POST['action'])) {
+            $action = $_POST['action'];
+        }
+
         if ($action === 'add') {
             // Daten aus POST-Daten lesen
             $vorname = $_POST['vorname'];
@@ -25,14 +30,28 @@ try {
             $disziplin_id = $_POST['disziplin'];
             $organisation = $_POST['organisation'];
             $rekord = $_POST['rekord'] ?? null;  // Optional
+            $image_path = null;
 
             if($geburtsdatum == ""){
                 $geburtsdatum = NULL;
             }
 
+            // Handle image upload
+            if (isset($_FILES['fighterImage']) && $_FILES['fighterImage']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = 'server/dist/backend/uploads/fighters/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $filename = basename($_FILES['fighterImage']['name']);
+                $targetPath = $uploadDir . $filename;
+                if (move_uploaded_file($_FILES['fighterImage']['tmp_name'], $targetPath)) {
+                    $image_path = $targetPath;
+                }
+            }
+
             // SQL-Query zum Hinzufügen eines Kämpfers
-            $sql = "INSERT INTO Fighters (vorname, nachname, geburtsdatum, nationalitaet, gewichtsklasse, disziplin_id, organisation, rekord)
-                    VALUES (:vorname, :nachname, :geburtsdatum, :nationalitaet, :gewichtsklasse, :disziplin_id, :organisation, :rekord)";
+            $sql = "INSERT INTO Fighters (vorname, nachname, geburtsdatum, nationalitaet, gewichtsklasse, disziplin_id, organisation, rekord, image_path)
+                    VALUES (:vorname, :nachname, :geburtsdatum, :nationalitaet, :gewichtsklasse, :disziplin_id, :organisation, :rekord, :image_path)";
             $stmt = $pdo->prepare($sql);
             $stmt->bindParam(':vorname', $vorname);
             $stmt->bindParam(':nachname', $nachname);
@@ -42,11 +61,96 @@ try {
             $stmt->bindParam(':disziplin_id', $disziplin_id);
             $stmt->bindParam(':organisation', $organisation);
             $stmt->bindParam(':rekord', $rekord);
+            $stmt->bindParam(':image_path', $image_path);
 
             $stmt->execute();
 
             $response['success'] = true;
             $response['message'] = "Kämpfer erfolgreich hinzugefügt!";
+            } elseif ($action === 'update') {
+                // Update an existing fighter
+                $id = $_POST['id'];
+                $vorname = $_POST['vorname'];
+                $nachname = $_POST['nachname'];
+                $geburtsdatum = $_POST['geburtsdatum'];
+                $nationalitaet = $_POST['nationalitaet'];
+                $gewichtsklasse = $_POST['gewichtsklasse'];
+                $disziplin_id = $_POST['disziplin'];
+                $organisation = $_POST['organisation'];
+                $rekord = $_POST['rekord'] ?? null;
+                $image_path = null;
+
+                if($geburtsdatum == ""){
+                    $geburtsdatum = NULL;
+                }
+
+                // Get current image_path
+                $sql = "SELECT image_path FROM Fighters WHERE id = :id";
+                $stmt = $pdo->prepare($sql);
+                $stmt->bindParam(':id', $id);
+                $stmt->execute();
+                $current = $stmt->fetch(PDO::FETCH_ASSOC);
+                $image_path = $current ? $current['image_path'] : null;
+
+                // Handle new image upload (replace old image)
+                if (isset($_FILES['fighterImage']) && $_FILES['fighterImage']['error'] === UPLOAD_ERR_OK) {
+                    $uploadDir = 'server/dist/backend/uploads/fighters/';
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0777, true);
+                    }
+                    $filename = basename($_FILES['fighterImage']['name']);
+                    $targetPath = $uploadDir . $filename;
+                    if (move_uploaded_file($_FILES['fighterImage']['tmp_name'], $targetPath)) {
+                        // Delete old image if exists and is different
+                        if ($image_path && file_exists($image_path) && $image_path !== $targetPath) {
+                            unlink($image_path);
+                        }
+                        $image_path = $targetPath;
+                    }
+                } else if (isset($_POST['removeImage']) && $_POST['removeImage'] === '1') {
+                    // Remove image if requested
+                    if ($image_path && file_exists($image_path)) {
+                        unlink($image_path);
+                    }
+                    $image_path = null;
+                }
+
+                $sql = "UPDATE Fighters SET vorname=:vorname, nachname=:nachname, geburtsdatum=:geburtsdatum, nationalitaet=:nationalitaet, gewichtsklasse=:gewichtsklasse, disziplin_id=:disziplin_id, organisation=:organisation, rekord=:rekord, image_path=:image_path WHERE id=:id";
+                $stmt = $pdo->prepare($sql);
+                $stmt->bindParam(':vorname', $vorname);
+                $stmt->bindParam(':nachname', $nachname);
+                $stmt->bindParam(':geburtsdatum', $geburtsdatum);
+                $stmt->bindParam(':nationalitaet', $nationalitaet);
+                $stmt->bindParam(':gewichtsklasse', $gewichtsklasse);
+                $stmt->bindParam(':disziplin_id', $disziplin_id);
+                $stmt->bindParam(':organisation', $organisation);
+                $stmt->bindParam(':rekord', $rekord);
+                $stmt->bindParam(':image_path', $image_path);
+                $stmt->bindParam(':id', $id);
+                $stmt->execute();
+
+                $response['success'] = true;
+                $response['message'] = "Kämpfer erfolgreich aktualisiert!";
+
+            } elseif ($action === 'delete') {
+                // Delete a fighter by ID
+                $id = $_POST['id'];
+                // Get image path to delete file
+                $sql = "SELECT image_path FROM Fighters WHERE id = :id";
+                $stmt = $pdo->prepare($sql);
+                $stmt->bindParam(':id', $id);
+                $stmt->execute();
+                $fighter = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($fighter && $fighter['image_path'] && file_exists($fighter['image_path'])) {
+                    unlink($fighter['image_path']);
+                }
+                // Delete from DB
+                $sql = "DELETE FROM Fighters WHERE id = :id";
+                $stmt = $pdo->prepare($sql);
+                $stmt->bindParam(':id', $id);
+                $stmt->execute();
+                $response['success'] = true;
+                $response['message'] = "Kämpfer erfolgreich gelöscht!";
         } elseif ($action === 'list') {
             // Kämpfer aus der Datenbank abrufen
             $sql = "SELECT * FROM Fighters ORDER BY id DESC";

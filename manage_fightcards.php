@@ -35,9 +35,38 @@ try {
 
             $response['success'] = true;
             $response['message'] = "Kampf erfolgreich hinzugefügt!";
+        } elseif ($action === 'update') {
+            // Update an existing fightcard
+            $id = $_POST['id'];
+            $event_id = $_POST['event_id'];
+            $fighter1_id = $_POST['fighter1_id'];
+            $fighter2_id = $_POST['fighter2_id'];
+            $fight_order = $_POST['fight_order'];
+            
+            $sql = "UPDATE Fightcards SET event_id=:event_id, fighter1_id=:fighter1_id, fighter2_id=:fighter2_id, fight_order=:fight_order WHERE id=:id";
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(':event_id', $event_id);
+            $stmt->bindParam(':fighter1_id', $fighter1_id);
+            $stmt->bindParam(':fighter2_id', $fighter2_id);
+            $stmt->bindParam(':fight_order', $fight_order);
+            $stmt->bindParam(':id', $id);
+            $stmt->execute();
+            
+            $response['success'] = true;
+            $response['message'] = "Kampf erfolgreich aktualisiert!";
+        } elseif ($action === 'delete') {
+            // Delete a fightcard by ID
+            $id = $_POST['id'];
+            $sql = "DELETE FROM Fightcards WHERE id = :id";
+            $stmt = $pdo->prepare($sql);
+            $stmt->bindParam(':id', $id);
+            $stmt->execute();
+            
+            $response['success'] = true;
+            $response['message'] = "Kampf erfolgreich gelöscht!";
         } elseif ($action === 'list') {
            // Alle Fightcards für alle Events abrufen
-                $sql = "SELECT e.name AS event_name, e.datum AS event_date,
+                $sql = "SELECT f.id, f.event_id, f.fighter1_id, f.fighter2_id, e.name AS event_name, e.datum AS event_date,
                 f.fight_order, 
                 CONCAT(f1.vorname, ' ', f1.nachname) AS fighter1_name, 
                 CONCAT(f2.vorname, ' ', f2.nachname) AS fighter2_name

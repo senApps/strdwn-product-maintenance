@@ -5,23 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Event & Fightcard Management</title>
     <style>
+                .event-select-compact {
+                    width: 300px;
+                    max-width: 90vw;
+                    display: block;
+                    margin-bottom: 15px;
+                    padding: 10px;
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                    font-size: 16px;
+                    box-sizing: border-box;
+                }
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
+            margin: 0;
+            padding: 0;
             background-color: #f9f9f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
         }
         h2 {
             color: #333;
         }
-        form, table {
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
             margin-bottom: 20px;
         }
-        label, select, input, button {
+        label {
             display: block;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        input, select, button {
             width: 100%;
-            max-width: 400px;
-            padding: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
         }
         table {
             width: 100%;
@@ -40,9 +70,62 @@
             color: white;
             border: none;
             cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
         }
         button:hover {
             background-color: #45a049;
+        }
+        @media (max-width: 600px) {
+            form {
+                padding: 15px;
+                width: 90%;
+            }
+        }
+        
+        /* Modal for full-screen image preview */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .image-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .image-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .image-modal-close:hover {
+            color: #bbb;
+        }
+
+        .thumbnail-clickable {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .thumbnail-clickable:hover {
+            transform: scale(1.1);
         }
     </style>
     <script>
@@ -52,6 +135,9 @@
 
             // Load Events on Page Load
             loadEvents();
+            
+            // Load Events List
+            loadEventsList();
 
             // Add Event Form Submission
             document.getElementById("addEventForm").addEventListener("submit", function (event) {
@@ -67,7 +153,13 @@
                     if (data.success) {
                         alert("Event erfolgreich hinzugefügt!");
                         loadEvents();
+                        loadEventsList();
                         this.reset();
+                        // Reset image preview
+                        document.getElementById('eventImagePreview').style.display = 'none';
+                        document.getElementById('eventImagePreview').src = '';
+                        document.getElementById('eventImageDropText').style.display = 'inline';
+                        document.getElementById('removeEventImageIcon').style.display = 'none';
                     } else {
                         alert("Fehler: " + data.message);
                     }
@@ -147,9 +239,46 @@
                         data.data.forEach(event => {
                             const option = document.createElement("option");
                             option.value = event.id;
-                            option.textContent = `${event.name} - ${event.datum}`;
+                            option.textContent = event.name;
                             eventSelect.appendChild(option);
                         });
+                    }
+                });
+        }
+
+        // Load Events List for display
+        function loadEventsList() {
+            fetch("manage_events.php?action=list")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const tableBody = document.getElementById("eventsTableBody");
+                        tableBody.innerHTML = "";
+
+                        data.data.forEach(event => {
+                            const imageThumbnail = event.image_path ? 
+                                `<img src="${event.image_path}" alt="${event.name}" class="thumbnail-clickable" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onclick="openImageModal('${event.image_path}')">` : 
+                                '<span style="color:#999;">Kein Bild</span>';
+                            const row = document.createElement("tr");
+                            row.innerHTML = `
+                                <td>${imageThumbnail}</td>
+                                <td>${event.name}</td>
+                                <td>${event.datum || '-'}</td>
+                                <td>${event.austragungsort}</td>
+                                <td>${event.organisation_id || '-'}</td>
+                                <td>
+                                    <span class="edit-event-icon" title="Bearbeiten" data-id="${event.id}" style="cursor:pointer;font-size:20px;vertical-align:middle;">
+                                        ✏️
+                                    </span>
+                                    <span class="delete-event-icon" title="Löschen" data-id="${event.id}" style="cursor:pointer;font-size:20px;vertical-align:middle;margin-left:12px;">
+                                        🗑️
+                                    </span>
+                                </td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                        // Re-attach event listeners for edit/delete icons
+                        attachEventActionListeners();
                     }
                 });
         }
@@ -170,9 +299,19 @@
                                 <td>${fight.fighter1_name}</td>
                                 <td>${fight.fighter2_name}</td>
                                 <td>${fight.fight_order}</td>
+                                <td>
+                                    <span class="edit-fightcard-icon" title="Bearbeiten" data-id="${fight.id}" data-event-id="${fight.event_id}" data-fighter1-id="${fight.fighter1_id}" data-fighter2-id="${fight.fighter2_id}" data-fight-order="${fight.fight_order}" style="cursor:pointer;font-size:20px;vertical-align:middle;">
+                                        ✏️
+                                    </span>
+                                    <span class="delete-fightcard-icon" title="Löschen" data-id="${fight.id}" style="cursor:pointer;font-size:20px;vertical-align:middle;margin-left:12px;">
+                                        🗑️
+                                    </span>
+                                </td>
                             `;
                             fightcardTable.appendChild(row);
                         });
+                        // Re-attach event listeners for edit/delete icons
+                        attachFightcardActionListeners();
                     }
                 });
         }
@@ -180,6 +319,92 @@
         // Beim Laden der Seite die Fightcards automatisch laden
 document.addEventListener("DOMContentLoaded", function () {
     loadFightcard();
+});
+
+// Global helper function for canceling fightcard edit
+function cancelEditFight() {
+    window.editFightcardId = null;
+    document.getElementById('addFightForm').reset();
+    document.getElementById('submitFightBtn').style.display = '';
+    document.getElementById('updateFightBtn').style.display = 'none';
+    document.getElementById('cancelEditFightBtn').style.display = 'none';
+}
+
+// Attach action listeners for edit/delete fightcard icons
+function attachFightcardActionListeners() {
+    document.querySelectorAll('.edit-fightcard-icon').forEach(function(icon) {
+        icon.addEventListener('click', function() {
+            const fightId = this.getAttribute('data-id');
+            const eventId = this.getAttribute('data-event-id');
+            const fighter1Id = this.getAttribute('data-fighter1-id');
+            const fighter2Id = this.getAttribute('data-fighter2-id');
+            const fightOrder = this.getAttribute('data-fight-order');
+            
+            // Populate form fields
+            document.getElementById('eventSelect').value = eventId;
+            document.getElementById('fighter1_id').value = fighter1Id;
+            document.getElementById('fighter2_id').value = fighter2Id;
+            document.getElementById('fight_order').value = fightOrder;
+            
+            // Set edit mode
+            window.editFightcardId = fightId;
+            document.getElementById('submitFightBtn').style.display = 'none';
+            document.getElementById('updateFightBtn').style.display = '';
+            document.getElementById('cancelEditFightBtn').style.display = '';
+        });
+    });
+    
+    document.querySelectorAll('.delete-fightcard-icon').forEach(function(icon) {
+        icon.addEventListener('click', function() {
+            const fightId = this.getAttribute('data-id');
+            if (confirm('Diesen Kampf wirklich löschen?')) {
+                const formData = new FormData();
+                formData.append('id', fightId);
+                fetch('manage_fightcards.php?action=delete', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadFightcard();
+                    } else {
+                        alert('Fehler beim Löschen: ' + (data.message || data.error || 'Unbekannter Fehler'));
+                    }
+                })
+                .catch(err => {
+                    alert('Fehler beim Löschen: ' + err);
+                });
+            }
+        });
+    });
+}
+
+// Update button click handler
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('updateFightBtn').addEventListener('click', function() {
+        if (!window.editFightcardId) return;
+        const formData = new FormData(document.getElementById('addFightForm'));
+        formData.append('id', window.editFightcardId);
+        formData.set('event_id', document.getElementById('eventSelect').value);
+        
+        fetch('manage_fightcards.php?action=update', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                cancelEditFight();
+                loadFightcard();
+            } else {
+                alert('Fehler beim Aktualisieren: ' + (data.message || data.error || 'Unbekannter Fehler'));
+            }
+        })
+        .catch(err => {
+            alert('Fehler beim Aktualisieren: ' + err);
+        });
+    });
 });
 
 // Load Organisations
@@ -205,6 +430,123 @@ function loadOrganisations() {
 document.addEventListener("DOMContentLoaded", function () {
     loadOrganisations();
 });
+
+// Global helper function for canceling event edit
+function cancelEditEvent() {
+    window.editEventId = null;
+    document.getElementById('addEventForm').reset();
+    document.getElementById('eventImagePreview').style.display = 'none';
+    document.getElementById('eventImagePreview').src = '';
+    document.getElementById('eventImageDropText').style.display = 'inline';
+    document.getElementById('removeEventImageIcon').style.display = 'none';
+    document.getElementById('submitEventBtn').style.display = '';
+    document.getElementById('updateEventBtn').style.display = 'none';
+    document.getElementById('cancelEditEventBtn').style.display = 'none';
+}
+
+// Attach action listeners for edit/delete event icons
+function attachEventActionListeners() {
+    document.querySelectorAll('.edit-event-icon').forEach(function(icon) {
+        icon.addEventListener('click', function() {
+            const eventId = this.getAttribute('data-id');
+            fetch('manage_events.php?action=list')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const event = data.data.find(e => e.id == eventId);
+                        if (!event) return;
+                        
+                        document.getElementById('name').value = event.name || '';
+                        document.getElementById('datum').value = event.datum || '';
+                        document.getElementById('austragungsort').value = event.austragungsort || '';
+                        document.getElementById('organisation_id').value = event.organisation_id || '';
+                        document.getElementById('uhrzeit').value = event.uhrzeit || '';
+                        document.getElementById('streaming_service').value = event.streaming_service || '';
+                        document.getElementById('ticket_link').value = event.ticket_link || '';
+                        
+                        if (event.image_path) {
+                            const imagePreview = document.getElementById('eventImagePreview');
+                            const imageDropText = document.getElementById('eventImageDropText');
+                            const removeIcon = document.getElementById('removeEventImageIcon');
+                            imagePreview.src = event.image_path;
+                            imagePreview.style.display = 'block';
+                            imageDropText.style.display = 'none';
+                            removeIcon.style.display = 'block';
+                        }
+                        
+                        window.editEventId = eventId;
+                        document.getElementById('submitEventBtn').style.display = 'none';
+                        document.getElementById('updateEventBtn').style.display = '';
+                        document.getElementById('cancelEditEventBtn').style.display = '';
+                    }
+                });
+        });
+    });
+    
+    document.querySelectorAll('.delete-event-icon').forEach(function(icon) {
+        icon.addEventListener('click', function() {
+            const eventId = this.getAttribute('data-id');
+            if (confirm('Dieses Event wirklich löschen?')) {
+                const formData = new FormData();
+                formData.append('id', eventId);
+                fetch('manage_events.php?action=delete', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadEvents();
+                        loadEventsList();
+                    } else {
+                        alert('Fehler beim Löschen: ' + (data.message || data.error || 'Unbekannter Fehler'));
+                    }
+                })
+                .catch(err => {
+                    alert('Fehler beim Löschen: ' + err);
+                });
+            }
+        });
+    });
+}
+
+// Update button click handler for events
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('updateEventBtn').addEventListener('click', function() {
+        if (!window.editEventId) return;
+        const formData = new FormData(document.getElementById('addEventForm'));
+        formData.append('id', window.editEventId);
+        
+        fetch('manage_events.php?action=update', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                cancelEditEvent();
+                loadEvents();
+                loadEventsList();
+            } else {
+                alert('Fehler beim Aktualisieren: ' + (data.message || data.error || 'Unbekannter Fehler'));
+            }
+        })
+        .catch(err => {
+            alert('Fehler beim Aktualisieren: ' + err);
+        });
+    });
+});
+
+// Image Modal Functions
+function openImageModal(imagePath) {
+    document.getElementById('imageModal').style.display = 'flex';
+    document.getElementById('modalImage').src = imagePath;
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').style.display = 'none';
+    document.getElementById('modalImage').src = '';
+}
     </script>
 </head>
 <body>
@@ -212,6 +554,17 @@ document.addEventListener("DOMContentLoaded", function () {
     <form id="addEventForm">
         <label for="name">Event Name:</label>
         <input type="text" id="name" name="name" required>
+
+        <!-- Image Upload Field -->
+        <label for="eventImage">Event-Bild hochladen:</label>
+        <div id="eventImageDropArea" style="border:2px dashed #ccc; border-radius:8px; padding:16px; text-align:center; margin-bottom:15px; background:#fafafa; cursor:pointer;">
+            <span id="eventImageDropText">Bild hierher ziehen oder klicken</span>
+            <input type="file" id="eventImage" name="eventImage" accept="image/*" style="display:none;">
+            <div style="position:relative; display:inline-block; width:100%;">
+                <img id="eventImagePreview" src="" alt="Bildvorschau" style="display:none; max-width:100%; margin-top:10px; border-radius:8px;" />
+                <span id="removeEventImageIcon" title="Bild entfernen" style="display:none; position:absolute; top:18px; right:18px; background:rgba(0,0,0,0.6); color:#fff; border-radius:50%; width:28px; height:28px; line-height:28px; text-align:center; font-size:18px; font-weight:bold; cursor:pointer; z-index:2;">&#10006;</span>
+            </div>
+        </div>
 
         <label for="organisation_id">Organisation:</label>
         <select id="organisation_id" name="organisation_id" required>
@@ -233,12 +586,30 @@ document.addEventListener("DOMContentLoaded", function () {
         <label for="ticket_link">Ticket-Link:</label>
         <input type="url" id="ticket_link" name="ticket_link">
 
-        <button type="submit">Event hinzufügen</button>
+        <button type="submit" id="submitEventBtn">Event hinzufügen</button>
+        <button type="button" id="updateEventBtn" style="display:none;">Speichern</button>
+        <button type="button" id="cancelEditEventBtn" style="display:none;" onclick="cancelEditEvent()">Abbrechen</button>
     </form>
+
+    <h2>Event-Liste</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Bild</th>
+                <th>Name</th>
+                <th>Datum</th>
+                <th>Austragungsort</th>
+                <th>Organisation</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="eventsTableBody">
+        </tbody>
+    </table>
 
     <h2>Fightcard Management</h2>
     <label for="eventSelect">Event auswählen:</label>
-    <select id="eventSelect" required>
+    <select id="eventSelect" class="event-select-compact" required>
         <option value="">Event auswählen</option>
     </select>
 
@@ -256,7 +627,9 @@ document.addEventListener("DOMContentLoaded", function () {
         <label for="fight_order">Kampf Reihenfolge:</label>
         <input type="number" id="fight_order" name="fight_order" required>
 
-        <button type="submit">Kampf hinzufügen</button>
+        <button type="submit" id="submitFightBtn">Kampf hinzufügen</button>
+        <button type="button" id="updateFightBtn" style="display:none;">Speichern</button>
+        <button type="button" id="cancelEditFightBtn" style="display:none;" onclick="cancelEditFight()">Abbrechen</button>
     </form>
 
     <h2>Fightcard</h2>
@@ -267,10 +640,77 @@ document.addEventListener("DOMContentLoaded", function () {
                 <th>Kämpfer 1</th>
                 <th>Kämpfer 2</th>
                 <th>Reihenfolge</th>
+                <th></th>
             </tr>
         </thead>
         <tbody id="fightcardTableBody">
         </tbody>
     </table>
+    
+    <!-- Image Modal -->
+    <div id="imageModal" class="image-modal" onclick="closeImageModal()">
+        <span class="image-modal-close" onclick="closeImageModal()">&times;</span>
+        <img id="modalImage" src="" alt="Full screen preview">
+    </div>
 </body>
 </html>
+
+<script>
+// Drag & Drop Image Upload for Event
+document.addEventListener('DOMContentLoaded', function() {
+    const imageDropArea = document.getElementById('eventImageDropArea');
+    const eventImageInput = document.getElementById('eventImage');
+    const imagePreview = document.getElementById('eventImagePreview');
+    const imageDropText = document.getElementById('eventImageDropText');
+    const removeEventImageIcon = document.getElementById('removeEventImageIcon');
+
+    imageDropArea.addEventListener('click', () => {
+        eventImageInput.click();
+    });
+
+    imageDropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        imageDropArea.style.background = '#e0ffe0';
+    });
+
+    imageDropArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        imageDropArea.style.background = '#fafafa';
+    });
+
+    imageDropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        imageDropArea.style.background = '#fafafa';
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            eventImageInput.files = e.dataTransfer.files;
+            showImagePreview(e.dataTransfer.files[0]);
+        }
+    });
+
+    eventImageInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            showImagePreview(e.target.files[0]);
+        }
+    });
+
+    function showImagePreview(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            imagePreview.src = e.target.result;
+            imagePreview.style.display = 'block';
+            imageDropText.style.display = 'none';
+            removeEventImageIcon.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    removeEventImageIcon.addEventListener('click', function(e) {
+        e.stopPropagation();
+        eventImageInput.value = '';
+        imagePreview.src = '';
+        imagePreview.style.display = 'none';
+        imageDropText.style.display = 'inline';
+        removeEventImageIcon.style.display = 'none';
+    });
+});
+</script>
