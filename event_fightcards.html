@@ -248,38 +248,59 @@
 
         // Load Events List for display
         function loadEventsList() {
-            fetch("manage_events.php?action=list")
+            // First fetch organizations to create a lookup map
+            fetch("get_organisations.php")
                 .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        const tableBody = document.getElementById("eventsTableBody");
-                        tableBody.innerHTML = "";
-
-                        data.data.forEach(event => {
-                            const imageThumbnail = event.image_path ? 
-                                `<img src="${event.image_path}" alt="${event.name}" class="thumbnail-clickable" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onclick="openImageModal('${event.image_path}')">` : 
-                                '<span style="color:#999;">Kein Bild</span>';
-                            const row = document.createElement("tr");
-                            row.innerHTML = `
-                                <td>${imageThumbnail}</td>
-                                <td>${event.name}</td>
-                                <td>${event.datum || '-'}</td>
-                                <td>${event.austragungsort}</td>
-                                <td>${event.organisation_id || '-'}</td>
-                                <td>
-                                    <span class="edit-event-icon" title="Bearbeiten" data-id="${event.id}" style="cursor:pointer;font-size:20px;vertical-align:middle;">
-                                        ✏️
-                                    </span>
-                                    <span class="delete-event-icon" title="Löschen" data-id="${event.id}" style="cursor:pointer;font-size:20px;vertical-align:middle;margin-left:12px;">
-                                        🗑️
-                                    </span>
-                                </td>
-                            `;
-                            tableBody.appendChild(row);
+                .then(orgData => {
+                    // Create organization lookup map (id -> name)
+                    const orgMap = {};
+                    if (orgData.success) {
+                        orgData.data.forEach(org => {
+                            orgMap[org.id] = org.name;
                         });
-                        // Re-attach event listeners for edit/delete icons
-                        attachEventActionListeners();
                     }
+                    
+                    // Then fetch events
+                    return fetch("manage_events.php?action=list")
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                const tableBody = document.getElementById("eventsTableBody");
+                                tableBody.innerHTML = "";
+
+                                data.data.forEach(event => {
+                                    const imageThumbnail = event.image_path ? 
+                                        `<img src="${event.image_path}" alt="${event.name}" class="thumbnail-clickable" style="width:50px;height:50px;object-fit:cover;border-radius:4px;" onclick="openImageModal('${event.image_path}')">` : 
+                                        '<span style="color:#999;">Kein Bild</span>';
+                                    const ticketLinkDisplay = event.ticket_link ? 
+                                        `<a href="${event.ticket_link}" target="_blank" style="color:#4CAF50;text-decoration:none;">🎫 Link</a>` : 
+                                        '-';
+                                    const organisationName = event.organisation_id ? (orgMap[event.organisation_id] || event.organisation_id) : '-';
+                                    const row = document.createElement("tr");
+                                    row.innerHTML = `
+                                        <td>${imageThumbnail}</td>
+                                        <td>${event.name}</td>
+                                        <td>${event.datum || '-'}</td>
+                                        <td>${event.austragungsort}</td>
+                                        <td>${organisationName}</td>
+                                        <td>${event.uhrzeit || '-'}</td>
+                                        <td>${event.streaming_service || '-'}</td>
+                                        <td>${ticketLinkDisplay}</td>
+                                        <td>
+                                            <span class="edit-event-icon" title="Bearbeiten" data-id="${event.id}" style="cursor:pointer;font-size:20px;vertical-align:middle;">
+                                                ✏️
+                                            </span>
+                                            <span class="delete-event-icon" title="Löschen" data-id="${event.id}" style="cursor:pointer;font-size:20px;vertical-align:middle;margin-left:12px;">
+                                                🗑️
+                                            </span>
+                                        </td>
+                                    `;
+                                    tableBody.appendChild(row);
+                                });
+                                // Re-attach event listeners for edit/delete icons
+                                attachEventActionListeners();
+                            }
+                        });
                 });
         }
 
@@ -600,6 +621,9 @@ function closeImageModal() {
                 <th>Datum</th>
                 <th>Austragungsort</th>
                 <th>Organisation</th>
+                <th>Uhrzeit</th>
+                <th>Streaming-Service</th>
+                <th>Ticket-Link</th>
                 <th></th>
             </tr>
         </thead>
