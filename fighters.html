@@ -340,6 +340,36 @@ function attachActionListeners() {
         document.getElementById('cancelEditBtn').style.display = 'none';
     }
 
+    // Fighter search functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const fighterSearchInput = document.getElementById('fighterSearchInput');
+        const clearFighterSearch = document.getElementById('clearFighterSearch');
+        
+        fighterSearchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            const tableBody = document.getElementById('fightersTableBody');
+            const rows = tableBody.getElementsByTagName('tr');
+            
+            // Show/hide clear button
+            clearFighterSearch.style.display = searchTerm ? 'block' : 'none';
+            
+            // Filter rows
+            for (let row of rows) {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            }
+        });
+        
+        clearFighterSearch.addEventListener('click', function() {
+            fighterSearchInput.value = '';
+            this.style.display = 'none';
+            const tableBody = document.getElementById('fightersTableBody');
+            const rows = tableBody.getElementsByTagName('tr');
+            for (let row of rows) {
+                row.style.display = '';
+            }
+        });
+    });
 
     </script>
 </head>
@@ -460,6 +490,10 @@ function attachActionListeners() {
 
     <div>
         <h2>Kämpferliste</h2>
+        <div style="margin-bottom: 15px; position: relative; max-width: 500px;">
+            <input type="text" id="fighterSearchInput" placeholder="Kämpfer suchen..." style="width: 100%; padding: 10px 35px 10px 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px;">
+            <span id="clearFighterSearch" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 20px; color: #999;" title="Suche löschen">&times;</span>
+        </div>
         <table border="1" style="width: 100%; text-align: left; border-collapse: collapse;">
             <thead>
                 <tr>

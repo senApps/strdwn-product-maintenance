@@ -568,6 +568,68 @@ function closeImageModal() {
     document.getElementById('imageModal').style.display = 'none';
     document.getElementById('modalImage').src = '';
 }
+
+// Event search functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const eventSearchInput = document.getElementById('eventSearchInput');
+    const clearEventSearch = document.getElementById('clearEventSearch');
+    
+    eventSearchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        const tableBody = document.getElementById('eventsTableBody');
+        const rows = tableBody.getElementsByTagName('tr');
+        
+        // Show/hide clear button
+        clearEventSearch.style.display = searchTerm ? 'block' : 'none';
+        
+        // Filter rows
+        for (let row of rows) {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        }
+    });
+    
+    clearEventSearch.addEventListener('click', function() {
+        eventSearchInput.value = '';
+        this.style.display = 'none';
+        const tableBody = document.getElementById('eventsTableBody');
+        const rows = tableBody.getElementsByTagName('tr');
+        for (let row of rows) {
+            row.style.display = '';
+        }
+    });
+});
+
+// Fightcard search functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const fightcardSearchInput = document.getElementById('fightcardSearchInput');
+    const clearFightcardSearch = document.getElementById('clearFightcardSearch');
+    
+    fightcardSearchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        const tableBody = document.getElementById('fightcardTableBody');
+        const rows = tableBody.getElementsByTagName('tr');
+        
+        // Show/hide clear button
+        clearFightcardSearch.style.display = searchTerm ? 'block' : 'none';
+        
+        // Filter rows
+        for (let row of rows) {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+        }
+    });
+    
+    clearFightcardSearch.addEventListener('click', function() {
+        fightcardSearchInput.value = '';
+        this.style.display = 'none';
+        const tableBody = document.getElementById('fightcardTableBody');
+        const rows = tableBody.getElementsByTagName('tr');
+        for (let row of rows) {
+            row.style.display = '';
+        }
+    });
+});
     </script>
 </head>
 <body>
@@ -613,6 +675,10 @@ function closeImageModal() {
     </form>
 
     <h2>Event-Liste</h2>
+    <div style="margin-bottom: 15px; position: relative; max-width: 500px;">
+        <input type="text" id="eventSearchInput" placeholder="Event suchen..." style="width: 100%; padding: 10px 35px 10px 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px;">
+        <span id="clearEventSearch" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 20px; color: #999;" title="Suche löschen">&times;</span>
+    </div>
     <table>
         <thead>
             <tr>
@@ -657,6 +723,10 @@ function closeImageModal() {
     </form>
 
     <h2>Fightcard</h2>
+    <div style="margin-bottom: 15px; position: relative; max-width: 500px;">
+        <input type="text" id="fightcardSearchInput" placeholder="Fightcard suchen..." style="width: 100%; padding: 10px 35px 10px 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px;">
+        <span id="clearFightcardSearch" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 20px; color: #999;" title="Suche löschen">&times;</span>
+    </div>
     <table>
         <thead>
             <tr>
