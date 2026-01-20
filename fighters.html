@@ -129,6 +129,25 @@
         }
     </style>
     <script>
+        function showSuccessMessage(message) {
+            // Create modal overlay
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 10000;';
+            
+            // Create message box
+            const messageBox = document.createElement('div');
+            messageBox.style.cssText = 'background-color: white; padding: 30px 40px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); text-align: center; font-size: 18px; color: #4CAF50; font-weight: bold;';
+            messageBox.textContent = message;
+            
+            modal.appendChild(messageBox);
+            document.body.appendChild(modal);
+            
+            // Auto-close after 2 seconds
+            setTimeout(() => {
+                document.body.removeChild(modal);
+            }, 2000);
+        }
+
         // JavaScript Validierung
         function validateForm() {
             let vorname = document.getElementById('vorname').value;
@@ -161,7 +180,7 @@ function submitForm(event) {
     .then(response => response.json()) // Antwort als JSON parsen
     .then(data => {
         if (data.success) {
-            alert("Kämpfer erfolgreich hinzugefügt!");
+            showSuccessMessage("Kämpfer erfolgreich hinzugefügt!");
             document.getElementById('fighterForm').reset(); // Formular zurücksetzen
             // Reset image preview
             document.getElementById('imagePreview').style.display = 'none';
