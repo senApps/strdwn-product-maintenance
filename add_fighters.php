@@ -50,7 +50,7 @@ try {
             }
 
             // SQL-Query zum Hinzufügen eines Kämpfers
-            $sql = "INSERT INTO Fighters (vorname, nachname, geburtsdatum, nationalitaet, gewichtsklasse, disziplin_id, organisation, rekord, image_path)
+                $sql = "INSERT INTO Fighters (vorname, nachname, geburtsdatum, nationalitaet, gewichtsklasse, disziplin_id, organisation, rekord, image_path)
                     VALUES (:vorname, :nachname, :geburtsdatum, :nationalitaet, :gewichtsklasse, :disziplin_id, :organisation, :rekord, :image_path)";
             $stmt = $pdo->prepare($sql);
             $stmt->bindParam(':vorname', $vorname);
